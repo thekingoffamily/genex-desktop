@@ -20,9 +20,10 @@ const REFRESHABLE: ReadonlySet<string> = new Set([
   EngineId.Codex,
   EngineId.OpenCode,
   EngineId.OpenRouter,
+  EngineId.DeepSeek,
 ]);
 /** The engines with no subscription sign-in: a recheck reads their models (and status) again. */
-const RECHECKED_BY_MODELS: readonly string[] = [EngineId.OpenCode, EngineId.OpenRouter];
+const RECHECKED_BY_MODELS: readonly string[] = [EngineId.OpenCode, EngineId.OpenRouter, EngineId.DeepSeek];
 
 /** An engine whose API key is pasted in Settings (OpenRouter). */
 interface ApiKeyEngine {
@@ -37,7 +38,7 @@ const isApiKeyEngine = (engine: unknown): engine is ApiKeyEngine =>
 /** Why a local model request from the renderer is refused. */
 const MESSAGE = {
   unknownProvider: "Unknown coding provider",
-  noKeyEngine: "OpenRouter is unavailable",
+  noKeyEngine: "That provider is unavailable",
   bonsaiUnavailable: "Bonsai runtime is unavailable",
   noModel: "Name the model to delete",
   cannotRemove: "This model cannot be deleted here",
@@ -148,24 +149,35 @@ export function registerModelsIpc(handle: IpcHandle, { core, subscription, pushU
   });
 }
 
-/** The OpenRouter key: checked with OpenRouter, kept in the OS secret store, never sent back. */
+/** A metered provider's key: checked with the provider, kept in the OS secret store, never sent back. */
 function registerApiKeyIpc(
   handle: IpcHandle,
   { core, pushUiEvent }: Pick<ModelsIpcDeps, "core" | "pushUiEvent">,
 ): void {
-  const keyEngine = (): ApiKeyEngine => {
-    const engine = core.engines.has(EngineId.OpenRouter) ? core.engines.get(EngineId.OpenRouter) : null;
+  const keyEngine = (id: string): ApiKeyEngine => {
+    const engine = core.engines.has(id) ? core.engines.get(id) : null;
     if (!isApiKeyEngine(engine)) throw new Error(MESSAGE.noKeyEngine);
     return engine;
   };
+  const announce = (id: string): void => pushUiEvent({ type: UiEvent.EnginesChanged, payload: { engine: id } });
   handle("studio:openrouter.key.save", async (payload) => {
-    const status = await keyEngine().saveKey(payload?.key);
-    pushUiEvent({ type: UiEvent.EnginesChanged, payload: { engine: EngineId.OpenRouter } });
+    const status = await keyEngine(EngineId.OpenRouter).saveKey(payload?.key);
+    announce(EngineId.OpenRouter);
     return status;
   });
   handle("studio:openrouter.key.clear", async () => {
-    const status = await keyEngine().clearKey();
-    pushUiEvent({ type: UiEvent.EnginesChanged, payload: { engine: EngineId.OpenRouter } });
+    const status = await keyEngine(EngineId.OpenRouter).clearKey();
+    announce(EngineId.OpenRouter);
+    return status;
+  });
+  handle("studio:deepseek.key.save", async (payload) => {
+    const status = await keyEngine(EngineId.DeepSeek).saveKey(payload?.key);
+    announce(EngineId.DeepSeek);
+    return status;
+  });
+  handle("studio:deepseek.key.clear", async () => {
+    const status = await keyEngine(EngineId.DeepSeek).clearKey();
+    announce(EngineId.DeepSeek);
     return status;
   });
 }

@@ -62,11 +62,12 @@ import { ContextPreferences } from "../substrate/context-settings.ts";
 import { BonsaiEngine } from "../substrate/engines/bonsai.ts";
 import { ClaudeCodeEngine } from "../substrate/engines/claude-code.ts";
 import { CodexEngine } from "../substrate/engines/codex.ts";
+import { DeepSeekEngine } from "../substrate/engines/deepseek.ts";
 import { OllamaEngine, OllamaSidecar } from "../substrate/engines/ollama.ts";
 import { OpenCodeEngine } from "../substrate/engines/opencode.ts";
 import { LOCK_RECOVERY_DIR } from "../substrate/engines/ownership-locks.ts";
 import { OpenRouterEngine } from "../substrate/engines/openrouter.ts";
-import { OPENROUTER_KEY_SECRET, secretKeyStore } from "../substrate/provider-keys.ts";
+import { DEEPSEEK_KEY_SECRET, OPENROUTER_KEY_SECRET, secretKeyStore } from "../substrate/provider-keys.ts";
 import { EngineRegistry } from "../substrate/engines/registry.ts";
 import type { Engine, LiveToolResult } from "../substrate/engines/types.ts";
 import { EventStore } from "../substrate/event-store.ts";
@@ -963,11 +964,22 @@ export class StudioCore {
       ...SUBSCRIPTION_ENGINES,
       EngineId.OpenCode,
       EngineId.OpenRouter,
+      EngineId.DeepSeek,
     ]);
   }
 
   #defaultEngines(): Engine[] {
     return [
+      // DeepSeek first, so a saved key makes it the composer's default pick. Metered, so the app
+      // still never starts it on its own; it is offered and preselected, not auto-spent.
+      new DeepSeekEngine({
+        root: path.join(this.layout.engineHomes, EngineId.DeepSeek),
+        scratchRoot: path.join(this.layout.scratch, EngineId.DeepSeek),
+        protectedPaths: this.#protectedPaths(),
+        toolPath: async () => (await this.sandbox.toolPath()) ?? process.env.PATH ?? "",
+        keys: secretKeyStore(path.join(this.layout.secrets, "providers"), DEEPSEEK_KEY_SECRET),
+        onModelsChanged: () => this.emit(UiEvent.EnginesChanged, { engine: EngineId.DeepSeek }),
+      }),
       new BonsaiEngine({
         scratchRoot: path.join(this.layout.scratch, EngineId.Bonsai),
         root: path.join(this.layout.engineHomes, EngineId.Bonsai),

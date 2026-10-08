@@ -28,6 +28,9 @@ const NATIVE_CHANNELS = [
   // deletes it there. A fixture profile has no key and no network.
   "studio:openrouter.key.save",
   "studio:openrouter.key.clear",
+  // The same for DeepSeek's key.
+  "studio:deepseek.key.save",
+  "studio:deepseek.key.clear",
   "studio:codex-login.browser",
   "studio:codex-login.retry",
   "studio:claude-login.browser",

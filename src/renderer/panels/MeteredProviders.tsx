@@ -1,9 +1,9 @@
 /**
  * Settings → Model Providers, the metered rows: OpenCode, which signs in to providers itself in
- * Studio's terminal, and OpenRouter, whose API key is pasted here. Each row keeps the shape of a
+ * Studio's terminal, and DeepSeek and OpenRouter, whose API keys are pasted here. Each row keeps the shape of a
  * subscription's (`ModelsSection.tsx`): one status plate, one line, at most one visible action, an
- * Account menu once connected, and the picker's model list under it. The OpenRouter key goes
- * straight to main, which checks it with OpenRouter and keeps it in the OS secret store; it is
+ * Account menu once connected, and the picker's model list under it. A pasted key goes
+ * straight to main, which checks it with the provider and keeps it in the OS secret store; it is
  * never shown again, and the field forgets it the moment it is sent.
  */
 import { type JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -323,13 +323,33 @@ function OpenCodeRow({
 }
 
 const OPEN_ROUTER_WORDS: ProviderWords = { name: WORDS.openRouter.name, plans: "", guide: WORDS.openRouter.keysUrl };
+const DEEP_SEEK_WORDS: ProviderWords = { name: WORDS.deepSeek.name, plans: "", guide: WORDS.deepSeek.keysUrl };
 
-/** The key field: paste, save (checked by OpenRouter first), get a key, or cancel a replacement. */
+/** The words of a pasted-key row; OpenRouter's and DeepSeek's share the shape. */
+interface KeyWords {
+  name: string;
+  keysUrl: string;
+  keyLabel: string;
+  keyPlaceholder: string;
+  save: string;
+  getKey: string;
+  notConnectedLine: string;
+  connectedLine: string;
+  refused: string;
+  replace: string;
+  replaceLine: string;
+  remove: string;
+  cancel: string;
+}
+
+/** The key field: paste, save (checked by the provider first), get a key, or cancel a replacement. */
 function KeyEntry({
+  words,
   saving,
   onSave,
   onCancel,
 }: {
+  words: KeyWords;
   saving: boolean;
   onSave: (key: string) => Promise<void>;
   onCancel: (() => void) | null;
@@ -345,8 +365,8 @@ function KeyEntry({
     <div className="flex flex-wrap items-center gap-2">
       <input
         type="password"
-        aria-label={WORDS.openRouter.keyLabel}
-        placeholder={WORDS.openRouter.keyPlaceholder}
+        aria-label={words.keyLabel}
+        placeholder={words.keyPlaceholder}
         autoComplete="off"
         spellCheck={false}
         value={key}
@@ -358,37 +378,38 @@ function KeyEntry({
         className="h-8 w-64 rounded-control border border-input bg-field px-2.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-accent-ink"
       />
       <Button variant="default" disabled={saving || !key.trim()} onClick={() => void save()}>
-        {saving ? WORDS.saving : WORDS.openRouter.save}
+        {saving ? WORDS.saving : words.save}
       </Button>
-      <Button onClick={() => void window.studio.openUrl(WORDS.openRouter.keysUrl)}>{WORDS.openRouter.getKey}</Button>
-      {onCancel && <Button onClick={onCancel}>{WORDS.openRouter.cancel}</Button>}
+      <Button onClick={() => void window.studio.openUrl(words.keysUrl)}>{words.getKey}</Button>
+      {onCancel && <Button onClick={onCancel}>{words.cancel}</Button>}
     </div>
   );
 }
 
-/** OpenRouter's row by its state: connected, waiting for a key, or unable to check. */
-function openRouterView(
+/** A pasted-key row by its state: connected, waiting for a key, or unable to check. */
+function meteredKeyView(
   status: EngineStatus,
+  words: KeyWords,
   act: { recheck: () => void; replace: () => void; remove: () => void },
 ): RowView {
   if (status.code === EngineStatusCode.Ready)
     return {
       tone: RowTone.Connected,
       status: WORDS.connected,
-      line: WORDS.openRouter.connectedLine,
+      line: words.connectedLine,
       actions: (
-        <AccountMenu name={WORDS.openRouter.name} onCheck={act.recheck}>
+        <AccountMenu name={words.name} onCheck={act.recheck}>
           <>
             <DropdownMenuItem onSelect={act.replace}>
-              <ItemWords title={WORDS.openRouter.replace} line={WORDS.openRouter.replaceLine} />
+              <ItemWords title={words.replace} line={words.replaceLine} />
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={act.remove}>{WORDS.openRouter.remove}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={act.remove}>{words.remove}</DropdownMenuItem>
           </>
         </AccountMenu>
       ),
     };
   if (status.code === EngineStatusCode.NeedsLogin)
-    return { tone: RowTone.Off, status: WORDS.notConnected, line: WORDS.openRouter.notConnectedLine, actions: null };
+    return { tone: RowTone.Off, status: WORDS.notConnected, line: words.notConnectedLine, actions: null };
   return {
     tone: RowTone.Danger,
     status: WORDS.couldNotCheck,
@@ -397,12 +418,24 @@ function openRouterView(
   };
 }
 
-function OpenRouterRow({
+/** A metered provider whose key is pasted in Settings: check it, keep it, replace or forget it. */
+function ApiKeyRow({
   engine,
+  words,
+  keyWords,
   onEnginesRefresh,
-}: { engine: EngineDescriptor } & Pick<MeteredProviderProps, "onEnginesRefresh">) {
+  saveKey,
+  clearKey,
+}: {
+  engine: EngineDescriptor;
+  words: ProviderWords;
+  keyWords: KeyWords;
+  onEnginesRefresh: () => Promise<void> | void;
+  saveKey: (key: string) => Promise<EngineStatus>;
+  clearKey: () => Promise<EngineStatus>;
+}): JSX.Element {
   const { run, error } = useRun();
-  const { checking, recheck } = useRecheck(EngineId.OpenRouter, onEnginesRefresh);
+  const { checking, recheck } = useRecheck(engine.id, onEnginesRefresh);
   const [replacing, setReplacing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refused, setRefused] = useState(false);
@@ -411,7 +444,7 @@ function OpenRouterRow({
     run(async () => {
       setSaving(true);
       try {
-        const status = await window.studio.openRouterKeySave(key);
+        const status = await saveKey(key);
         const accepted = status.code === EngineStatusCode.Ready;
         setRefused(!accepted);
         if (accepted) setReplacing(false);
@@ -420,38 +453,65 @@ function OpenRouterRow({
         setSaving(false);
       }
     });
-  const view = openRouterView(engine.status, {
+  const view = meteredKeyView(engine.status, keyWords, {
     recheck: () => void run(recheck),
     replace: () => setReplacing(true),
     remove: () =>
       void run(async () => {
-        await window.studio.openRouterKeyClear();
+        await clearKey();
         await onEnginesRefresh();
       }),
   });
   const asksForKey = replacing || engine.status.code === EngineStatusCode.NeedsLogin;
   return (
     <ProviderCard
-      words={OPEN_ROUTER_WORDS}
+      words={words}
       engine={engine}
       view={view}
       checking={checking}
       connected={ready && !replacing}
-      problem={error ?? (refused ? WORDS.openRouter.refused : null)}
+      problem={error ?? (refused ? keyWords.refused : null)}
     >
-      {asksForKey && <KeyEntry saving={saving} onSave={save} onCancel={replacing ? () => setReplacing(false) : null} />}
+      {asksForKey && (
+        <KeyEntry
+          words={keyWords}
+          saving={saving}
+          onSave={save}
+          onCancel={replacing ? () => setReplacing(false) : null}
+        />
+      )}
     </ProviderCard>
   );
 }
 
 /** The metered rows, under the subscriptions: each only when its engine is registered. */
 export function MeteredProviderRows({ engines, onEnginesRefresh }: MeteredProviderProps): JSX.Element {
+  const deepSeek = engines.find((engine) => engine.id === EngineId.DeepSeek);
   const openCode = engines.find((engine) => engine.id === EngineId.OpenCode);
   const openRouter = engines.find((engine) => engine.id === EngineId.OpenRouter);
   return (
     <>
+      {deepSeek && (
+        <ApiKeyRow
+          engine={deepSeek}
+          words={DEEP_SEEK_WORDS}
+          keyWords={WORDS.deepSeek}
+          onEnginesRefresh={onEnginesRefresh}
+          saveKey={(key) => window.studio.deepSeekKeySave(key)}
+          clearKey={() => window.studio.deepSeekKeyClear()}
+        />
+      )}
       {openCode && <OpenCodeRow engine={openCode} onEnginesRefresh={onEnginesRefresh} />}
-      {openRouter && <OpenRouterRow engine={openRouter} onEnginesRefresh={onEnginesRefresh} />}
+      {openRouter && (
+        <ApiKeyRow
+          engine={openRouter}
+          words={OPEN_ROUTER_WORDS}
+          keyWords={WORDS.openRouter}
+          onEnginesRefresh={onEnginesRefresh}
+          saveKey={(key) => window.studio.openRouterKeySave(key)}
+          clearKey={() => window.studio.openRouterKeyClear()}
+        />
+      )}
     </>
   );
 }

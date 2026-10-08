@@ -46,7 +46,7 @@ Genex is early: expect rough edges, and tell us about them in
 
 ### Contributing
 
-You need macOS on Apple Silicon, Git and Node 24.
+You need Git and Node 24. Development runs on macOS (Apple Silicon), Windows and Linux.
 
 ```bash
 git clone https://github.com/genex-games/genex-desktop.git

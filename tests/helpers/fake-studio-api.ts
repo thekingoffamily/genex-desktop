@@ -108,6 +108,8 @@ const METHODS = [
   "openCodeSignIn",
   "openRouterKeySave",
   "openRouterKeyClear",
+  "deepSeekKeySave",
+  "deepSeekKeyClear",
   "terminalList",
   "terminalAccessibility",
   "terminalOpen",

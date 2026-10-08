@@ -121,6 +121,33 @@ export function windowsSetupProblem(error: unknown, details: string[] = []): San
   };
 }
 
+/** The part of srt-win's `status` answer that says whether the Windows sandbox is set up. */
+export interface WindowsSandboxStatus {
+  user?: { provisioned?: boolean; credPresent?: boolean };
+  /** `installed`: filters present; `cannot-read`: unknown to a non-elevated caller (treated as ready). */
+  wfp?: { state?: string };
+}
+
+/**
+ * The Windows setup problem a typed `srt-win status` probe reports, or null when the sandbox is
+ * ready. sandbox-runtime 0.0.73's `initialize` throws a plain dependency error before its typed
+ * `not_provisioned`, so a failed start asks this probe instead of matching message text: the
+ * same typed inputs {@link windowsSetupProblem} reads, from the status API rather than the error.
+ */
+export function windowsStatusProblem(status: WindowsSandboxStatus | null | undefined): SandboxProblem | null {
+  const userReady = status?.user?.provisioned === true && status.user.credPresent === true;
+  const fence = status?.wfp?.state;
+  const fenceReady = fence === undefined || fence === "installed" || fence === "cannot-read";
+  if (userReady && fenceReady) return null;
+  return {
+    code: SandboxProblemCode.NotProvisioned,
+    platform: StudioPlatform.Windows,
+    missingTools: [],
+    installCommands: [],
+    details: [],
+  };
+}
+
 /** Windows: no Git for Windows, so no Git Bash for sandboxed commands; Retry finds a new install. */
 export function gitMissingProblem(): SandboxProblem {
   return {

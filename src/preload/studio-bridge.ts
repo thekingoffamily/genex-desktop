@@ -273,6 +273,8 @@ function accountCalls(bridge: BridgeCalls) {
     openCodeSignIn: () => invoke("studio:opencode.signin"),
     openRouterKeySave: (key) => invoke("studio:openrouter.key.save", { key }),
     openRouterKeyClear: () => invoke("studio:openrouter.key.clear"),
+    deepSeekKeySave: (key) => invoke("studio:deepseek.key.save", { key }),
+    deepSeekKeyClear: () => invoke("studio:deepseek.key.clear"),
     onClaudeLogin: (listener) => subscribe("studio:claude-login", listener),
     codexLoginState: () => invoke("studio:codex-login.state"),
     codexLoginCancel: () => invoke("studio:codex-login.cancel"),

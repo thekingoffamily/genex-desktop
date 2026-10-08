@@ -18,8 +18,9 @@ private prompts, credentials and customer or provider records from issues and pu
 
 ## Set up
 
-You need macOS on Apple Silicon, Git, and Node 24 (see the
-[release readiness](docs/release-readiness.md) for the platform matrix).
+You need Git and Node 24 (see the
+[release readiness](docs/release-readiness.md) for the platform matrix). Development runs on
+macOS on Apple Silicon, on Windows and on Linux.
 
 ```bash
 nvm install          # once; reads .nvmrc (Node 24)
@@ -28,7 +29,10 @@ npm ci               # the postinstall check refuses any other Node
 npm run check:static # proves the toolchain works
 ```
 
-After an Electron upgrade, or on Linux, run `npm run rebuild:terminal` to rebuild node-pty.
+On Windows the first launch opens **Set up the protected workspace**, a one-time sandbox install
+behind a single administrator (UAC) prompt; approve it, or development fixture profiles cannot
+start the process sandbox. After an Electron upgrade, or on macOS/Linux, run
+`npm run rebuild:terminal` to rebuild node-pty (Windows uses the bundled prebuilds).
 Restore missing or mismatched locked dependencies as needed for requested development; upgrades
 are a separate decision. Do not use your normal Studio profile for development. For automated
 checks, start an isolated fixture profile with

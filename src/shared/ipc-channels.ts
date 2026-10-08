@@ -122,6 +122,8 @@ export const STUDIO_INVOKE_CHANNELS = {
   "studio:opencode.signin": "openCodeSignIn",
   "studio:openrouter.key.save": "openRouterKeySave",
   "studio:openrouter.key.clear": "openRouterKeyClear",
+  "studio:deepseek.key.save": "deepSeekKeySave",
+  "studio:deepseek.key.clear": "deepSeekKeyClear",
   "studio:terminal.list": "terminalList",
   "studio:terminal.accessibility": "terminalAccessibility",
   "studio:terminal.open": "terminalOpen",
@@ -306,6 +308,8 @@ export interface StudioInvokePayloads {
   "studio:opencode.signin": undefined;
   "studio:openrouter.key.save": { key: string };
   "studio:openrouter.key.clear": undefined;
+  "studio:deepseek.key.save": { key: string };
+  "studio:deepseek.key.clear": undefined;
   "studio:terminal.list": undefined;
   "studio:terminal.accessibility": undefined;
   "studio:terminal.open": { project: string };

@@ -40,6 +40,7 @@ import {
   sandboxProblem,
   windowsLaunchError,
   windowsSetupProblem,
+  windowsStatusProblem,
 } from "./sandbox-unavailable.ts";
 import { childEnv, windowsBaseEnv } from "./child-env.ts";
 import { credentialHomes, sandboxedCliHomes } from "./credential-homes.ts";
@@ -549,12 +550,33 @@ export class ProcessSandbox {
     ];
     const session = this.#seams.session ?? windowsSessionFor(runtime, { profile, srtWin: srtWinPath() });
     const backend = { session, bash, read, profile, curlHome: await writeCurlHome(this.scratchDir) };
-    await session
-      .join(this, { grants: this.#windowsGrants(backend), config: this.#windowsSessionConfig() })
-      .catch((error: unknown) => {
-        throw asSetupProblem(error);
-      });
+    try {
+      await session.join(this, { grants: this.#windowsGrants(backend), config: this.#windowsSessionConfig() });
+    } catch (error) {
+      throw await this.#windowsSetupError(error);
+    }
     this.#windows = backend;
+  }
+
+  /**
+   * A Windows join failure as the setup screen's problem. A typed `code` on the error is read
+   * first; sandbox-runtime 0.0.73 also throws a plain dependency error for a machine that is not
+   * provisioned, so the typed `srt-win status` probe classifies that case instead of the message.
+   * Any other failure is returned unchanged and still reports as a startup error.
+   */
+  async #windowsSetupError(error: unknown): Promise<unknown> {
+    const setup = asSetupProblem(error);
+    if (setup instanceof SandboxUnavailableError) return setup;
+    // An injected runtime owns its platform behavior (tests); the probe only reads this machine.
+    if (this.#runtime !== null) return error;
+    try {
+      const { checkWindowsSandboxStatusAsync, resolveSrtWin } = await import("@anthropic-ai/sandbox-runtime");
+      const status = await checkWindowsSandboxStatusAsync({ srtWin: resolveSrtWin({ path: await srtWinPath() }) });
+      const problem = windowsStatusProblem(status);
+      return problem ? new SandboxUnavailableError(problem) : error;
+    } catch {
+      return error;
+    }
   }
 
   /**

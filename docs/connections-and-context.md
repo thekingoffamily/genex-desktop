@@ -122,6 +122,14 @@ efforts and price. OpenRouter picks no default model. Context is estimated from 
 each request (compaction runs early rather than late); 401/403 is a sign-in failure, 402 a usage
 limit, 429 a rate limit. Errors are redacted before they are logged.
 
+**DeepSeek** ([deepseek.ts](../src/substrate/engines/deepseek.ts)) is the same kind of direct engine as
+OpenRouter, under DeepSeek's own id. Settings sends a pasted key over `studio:deepseek.key.save`
+(native); main checks it with `GET /models`, keeps it only when accepted (`deepseek-api-key` in the
+same SecretStore) and answers with the engine status, never the key. Its model list needs the key, so
+a missing key is a sign-in failure; rows are `deepseek-chat` and `deepseek-reasoner`. It picks no
+default model, and is registered first so a saved key makes it the composer's default pick while
+`isMetered` keeps it out of every automatic choice.
+
 **OpenCode** ([opencode.ts](../src/substrate/engines/opencode.ts)) is a delegated engine that runs
 `opencode run --format json --pure` with the brief on stdin, resumed by `--session`. OpenCode keeps
 its own sign-ins (`opencode auth login`, which Sign in runs in a terminal inside its Settings row,

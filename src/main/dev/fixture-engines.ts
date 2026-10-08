@@ -1,7 +1,7 @@
 /**
- * The scripted engines of a fixture session: Ollama, Claude Code, Codex, OpenCode and OpenRouter
- * stand-ins that answer from fixed text, never reach an account, a key or the network, and start no
- * vendor worker. Markers in
+ * The scripted engines of a fixture session: Ollama, Claude Code, Codex, OpenCode, OpenRouter and
+ * DeepSeek stand-ins that answer from fixed text, never reach an account, a key or the network, and
+ * start no vendor worker. Markers in
  * the user's words (`fixture:pending`, `fixture:stream`, `fixture:plan`, …) choose the script.
  */
 import { ChatActivityPhase } from "../../shared/chat-activity.ts";
@@ -30,9 +30,10 @@ const FIXTURE_ENGINES = [
   EngineId.Codex,
   EngineId.OpenCode,
   EngineId.OpenRouter,
+  EngineId.DeepSeek,
 ] as const;
 /** The fixture engines the studio's own loop drives: the local model, and OpenRouter's API. */
-const DIRECT_FIXTURES: ReadonlySet<string> = new Set([EngineId.Ollama, EngineId.OpenRouter]);
+const DIRECT_FIXTURES: ReadonlySet<string> = new Set([EngineId.Ollama, EngineId.OpenRouter, EngineId.DeepSeek]);
 const READY_STATUS: EngineStatus = { code: EngineStatusCode.Ready, detail: "AG-933 fixture; no account or network" };
 /** How long naming a game takes, so home's Naming step can be seen. */
 const NAMING_DELAY_MS = 2500;
@@ -83,6 +84,7 @@ export const FIRST_LAUNCH_STATUS: Record<string, EngineStatus> = {
   [EngineId.Codex]: { code: EngineStatusCode.NotInstalled, detail: "AG-933 fixture; no Codex app" },
   [EngineId.OpenCode]: { code: EngineStatusCode.NotInstalled, detail: "AG-933 fixture; no OpenCode CLI" },
   [EngineId.OpenRouter]: { code: EngineStatusCode.NeedsLogin, detail: "AG-933 fixture; no OpenRouter key" },
+  [EngineId.DeepSeek]: { code: EngineStatusCode.NeedsLogin, detail: "AG-933 fixture; no DeepSeek key" },
 };
 
 export function fixtureEngines(directChat = false, statuses: Record<string, EngineStatus> = {}): Engine[] {
