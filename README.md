@@ -53,10 +53,14 @@ git clone https://github.com/genex-games/genex-desktop.git
 cd genex-desktop
 nvm install && nvm use   # Node 24, from .nvmrc
 npm ci
-npm run studio:dev -- start --profile first-run --fixture app-basics
+npm run dev              # builds and launches the app
 ```
 
-The fixture runs the app with scripted models and sample games, so it needs no account. Read
+`npm run dev` finds a Node 24 itself (this process, `GENEX_NODE`, a system install or a portable copy under `~/node24/`), so an older default Node still starts the app. It opens normal, not a fixture; on Windows the first launch shows the one-time **Set up the protected workspace** screen.
+
+To run an owned fixture profile with scripted models and no account, use
+`npm run studio:dev -- start --profile first-run --fixture app-basics`. The fixture runs the app
+with scripted models and sample games, so it needs no account. Read
 [CONTRIBUTING.md](CONTRIBUTING.md) before you open a pull request; coding agents start at
 [AGENTS.md](AGENTS.md).
 
