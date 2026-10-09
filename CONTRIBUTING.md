@@ -31,7 +31,9 @@ npm run check:static # proves the toolchain works
 
 On Windows the first launch opens **Set up the protected workspace**, a one-time sandbox install
 behind a single administrator (UAC) prompt; approve it, or development fixture profiles cannot
-start the process sandbox. After an Electron upgrade, or on macOS/Linux, run
+start the process sandbox. srt-win is alpha and its ACL setup can hang on a machine with large,
+open browser profiles; `npm run dev:unsandboxed` runs the app without the process sandbox for local
+development (the app logs that it did). After an Electron upgrade, or on macOS/Linux, run
 `npm run rebuild:terminal` to rebuild node-pty (Windows uses the bundled prebuilds).
 Restore missing or mismatched locked dependencies as needed for requested development; upgrades
 are a separate decision. Do not use your normal Studio profile for development. For automated

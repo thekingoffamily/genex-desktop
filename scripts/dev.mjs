@@ -56,6 +56,11 @@ if (!node) {
 }
 
 const env = { ...process.env, PATH: `${path.dirname(node)}${path.delimiter}${process.env.PATH ?? ""}` };
+if (process.argv.includes("--unsandboxed")) {
+  // srt-win's ACL stamp can hang on Windows; this runs the app without the process sandbox.
+  env.GENEX_UNSANDBOXED = "1";
+  console.log("Genex dev: running without the process sandbox (--unsandboxed).");
+}
 
 function run(args) {
   const result = spawnSync(node, args, { cwd: ROOT, stdio: "inherit", env });

@@ -598,12 +598,24 @@ function launchCoreOptions(): Partial<ConstructorParameters<typeof StudioCore>[0
   return { gamesRoot: path.join(app.getPath("home"), "AI Games") };
 }
 
+/**
+ * `GENEX_UNSANDBOXED=1` runs the app without the process sandbox. On Windows srt-win is alpha and
+ * its ACL stamp can hang on live browser profiles, so this is the local-development escape hatch;
+ * the default stays sandboxed and the app says loudly when it is off.
+ */
+function unsandboxed(): boolean {
+  const value = process.env.GENEX_UNSANDBOXED;
+  return value === "1" || value === "true";
+}
+
 async function createCore(userData: string): Promise<StudioCore> {
+  if (unsandboxed()) studioLog.write("main", "process sandbox disabled (GENEX_UNSANDBOXED)");
   const studio = new StudioCore({
     renderGameCover,
     paths: { userData, resources },
     // Smoke runs keep everything under their throwaway userData.
     ...launchCoreOptions(),
+    ...(unsandboxed() ? { sandbox: false } : {}),
     ...(ollamaHost ? { ollamaHost } : {}),
     // Electron's binary doubles as node for the harness child process.
     execPath: process.execPath,
