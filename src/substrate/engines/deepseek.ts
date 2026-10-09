@@ -37,7 +37,7 @@ import { LocalSessions } from "./local-session.ts";
 import { CompletionStop, DEFAULT_COMPACTION_PERCENT, STOPPED_BY_USER } from "./common.ts";
 import type { ApiKeyStore } from "../provider-keys.ts";
 import { SecretStorageUnavailableError } from "../secrets.ts";
-import { HOUR_MS, SECOND_MS } from "../../shared/duration.ts";
+import { MINUTE_MS, SECOND_MS } from "../../shared/duration.ts";
 import { ContextSource } from "../../shared/context.ts";
 import { EngineKind, EngineStatusCode } from "../../shared/engine-descriptor.ts";
 import { EngineFailureKind } from "../../shared/engine-requests.ts";
@@ -58,8 +58,12 @@ const STATUS_FRESH_MS = 60 * SECOND_MS;
 const KEY_CHECK_TIMEOUT_MS = 10 * SECOND_MS;
 /** The largest model catalog read DeepSeek may send. */
 const MAX_CATALOG_BYTES = 4 * 1024 * 1024;
-/** Ceiling on one completion: long enough for a whole build turn, finite so a dead connection errors. */
-export const DEEPSEEK_COMPLETION_TIMEOUT_MS = HOUR_MS;
+/**
+ * Ceiling on one completion. DeepSeek's API can stall on a flaky connection, so this is minutes,
+ * not the hour OpenRouter allows: a turn that cannot answer fails in a few minutes with a clear
+ * message instead of hanging the chat.
+ */
+export const DEEPSEEK_COMPLETION_TIMEOUT_MS = 5 * MINUTE_MS;
 /** A model whose context the catalog does not give is assumed to have this much. */
 const DEFAULT_CONTEXT_TOKENS = 65_536;
 /** Characters per token when no tokenizer is at hand: low, so the estimate errs towards compacting early. */
@@ -88,6 +92,7 @@ const MESSAGE = {
   NoTools: "this model cannot call tools",
   NoVision: "this model cannot see images",
   Cut: "the connection to DeepSeek was cut mid-reply — the partial turn was lost; send the message again",
+  Timeout: "DeepSeek did not answer in time. Check your connection and send the message again.",
   Overflow: (required: number, window: number) =>
     `The request needs about ${required} tokens including the reply; this model's context is ${window}.`,
   Threshold: (required: number, threshold: number, percent: number) =>
@@ -530,6 +535,7 @@ export class DeepSeekEngine implements Engine {
     // An abort wins over whatever error it caused — a stop must never read as a failure.
     if (request.signal?.aborted) return new EngineError(EngineFailureKind.Aborted, this.id, STOPPED_BY_USER);
     const error = err as Error & { status?: number };
+    if (error.name === "TimeoutError") return new EngineError(EngineFailureKind.Unavailable, this.id, MESSAGE.Timeout);
     if (error.status) return classifyHttpFailure(this.id, error.status, redactSecrets(error.message));
     return this.#streamFailure(error.message);
   }
