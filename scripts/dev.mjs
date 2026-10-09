@@ -56,10 +56,17 @@ if (!node) {
 }
 
 const env = { ...process.env, PATH: `${path.dirname(node)}${path.delimiter}${process.env.PATH ?? ""}` };
-if (process.argv.includes("--unsandboxed")) {
-  // srt-win's ACL stamp can hang on Windows; this runs the app without the process sandbox.
+// On Windows srt-win is alpha: its ACL grant/stamp can hang for minutes on a real profile and
+// block startup, so the dev launcher runs without the process sandbox there. Force it back with
+// `--sandboxed` or GENEX_SANDBOXED=1; other platforms keep the sandbox unless `--unsandboxed`.
+const forceSandbox =
+  process.argv.includes("--sandboxed") || process.env.GENEX_SANDBOXED === "1" || process.env.GENEX_SANDBOXED === "true";
+const wantUnsandboxed = process.argv.includes("--unsandboxed") || process.platform === "win32";
+if (wantUnsandboxed && !forceSandbox) {
   env.GENEX_UNSANDBOXED = "1";
-  console.log("Genex dev: running without the process sandbox (--unsandboxed).");
+  console.log(
+    "Genex dev: process sandbox off (srt-win is alpha on Windows). Set GENEX_SANDBOXED=1 or pass --sandboxed to force it on.",
+  );
 }
 
 function run(args) {
